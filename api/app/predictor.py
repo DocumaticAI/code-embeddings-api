@@ -8,13 +8,14 @@ import json
 import os
 import time
 from typing import Optional, Union
-
+import os 
 import numpy as np
 import pandas as pd
+
 import uvicorn
 from fastapi import APIRouter, FastAPI, Response
 from schema import ModelSchema
-from serving.base import UniXCoderEmbedder
+from serving.models.unixcoder import UniXCoderEmbedder
 
 app = FastAPI()
 controller = APIRouter()
@@ -22,10 +23,12 @@ controller = APIRouter()
 preloaded_models = {}
 
 
+base_model = os.environ['base_model']
+
 @app.on_event("startup")
 def startup_event():
     print("downloading wrapped class for finetuned embedding models-")
-    preloaded_models["code_search_handler"] = UniXCoderEmbedder()
+    preloaded_models["code_search_handler"] = UniXCoderEmbedder(base_model)
     pass
 
 
@@ -51,11 +54,10 @@ async def transformation(payload: ModelSchema):
         a dictionary object with embeddings for all queries and code snippits that are parsed in the request
     """
     model = preloaded_models["code_search_handler"]
-    if payload.language not in ["python", "javascript", "go", "java"]:
+    if payload.language not in model.allowed_languages:
+        response_msg = f"Language currently unsupported. Supported language types are {model.allowed_languages}, got {payload.language}"
         return Response(
-            "Language currently unsupported. Supported task types are python, go, javascript- got task {}".format(
-                payload.language
-            ),
+            response_msg,
             status_code=400,
             media_type="plain/text",
         )
