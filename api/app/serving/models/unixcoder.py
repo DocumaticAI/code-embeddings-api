@@ -12,32 +12,7 @@ import yaml
 from transformers import RobertaConfig, RobertaModel, RobertaTokenizer
 from abc import abstractmethod, ABC
 
-
-class AbstractTransformerEncoder(ABC): 
-    '''
-    class for the inheritance definitions for all of the encoders that will be usable as 
-    partof the public embeddings API. 
-    ''' 
-    def __init__(self) -> None:
-        super().__init__()
-    
-    @property
-    def allowed_languages(self):
-        pass 
-
-    @abstractmethod
-    def load_tokenizer(self):
-        pass
-
-    @abstractmethod
-    def load_model(self): 
-        pass 
-
-    @abstractmethod
-    def make_embeddings(self):
-        pass 
-
-
+from .base import AbstractTransformerEncoder
 
 class UniXEncoderBase(nn.Module):
     def __init__(self, encoder):
@@ -59,8 +34,7 @@ class UniXEncoderBase(nn.Module):
             ).sum(-1)[:, None]
             return torch.nn.functional.normalize(outputs, p=2, dim=1)
 
-
-class UniXCoderEmbedder(object):
+class UniXCoderEmbedder(AbstractTransformerEncoder):
     """ """
 
     def __init__(self):

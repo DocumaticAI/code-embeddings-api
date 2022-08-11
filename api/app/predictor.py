@@ -14,7 +14,7 @@ import pandas as pd
 import uvicorn
 from fastapi import APIRouter, FastAPI, Response
 from schema import ModelSchema
-from serving.base import UniXCoderEmbedder
+from serving.models.unixcoder import UniXCoderEmbedder
 
 app = FastAPI()
 controller = APIRouter()
