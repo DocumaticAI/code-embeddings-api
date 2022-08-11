@@ -1,15 +1,9 @@
 UniXCoder:
-  base_model: microsoft/unixcoder-base
+  allowed_base_models: 
+    microsoft/unixcoder-base : ["java", "ruby", "python", "php", "javascript", "go"] 
+    microsoft/unixcoder-base-unimodal : ["java", "ruby", "python", "php", "javascript", "go"]
+    microsoft/unixcoder-base-nine : ["java", "ruby", "python", "php", "javascript", "go", "c++", "c#", "c"]
 
-  processing:
-    batch_size: 16
-    max_length: 512
-
-  training:
-    batch_size: 128
-    max_epochs: 3
-    log_every_n_steps: 10
-    deterministic: true
-    limit_train_batches: 0.25
-    limit_val_batches: 0.25
-
+  serving : 
+    batch_size : 32 
+    max_length : 512

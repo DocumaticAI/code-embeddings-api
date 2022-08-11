@@ -22,10 +22,11 @@ controller = APIRouter()
 preloaded_models = {}
 
 
+
 @app.on_event("startup")
 def startup_event():
     print("downloading wrapped class for finetuned embedding models-")
-    preloaded_models["code_search_handler"] = UniXCoderEmbedder()
+    preloaded_models["code_search_handler"] = UniXCoderEmbedder('microsoft/unixcoder-base')
     pass
 
 
@@ -51,11 +52,10 @@ async def transformation(payload: ModelSchema):
         a dictionary object with embeddings for all queries and code snippits that are parsed in the request
     """
     model = preloaded_models["code_search_handler"]
-    if payload.language not in ["python", "javascript", "go", "java"]:
+    if payload.language not in model.allowed_languages:
+        response_msg = f"Language currently unsupported. Supported language types are {model.allowed_languages}, got {payload.language}"
         return Response(
-            "Language currently unsupported. Supported task types are python, go, javascript- got task {}".format(
-                payload.language
-            ),
+            response_msg,
             status_code=400,
             media_type="plain/text",
         )

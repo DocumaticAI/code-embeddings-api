@@ -1,3 +1,4 @@
+from email.mime import base
 import os
 import time
 from abc import abstractmethod
@@ -15,10 +16,10 @@ from abc import abstractmethod, ABC
 from .base import AbstractTransformerEncoder
 
 class UniXEncoderBase(nn.Module):
-    def __init__(self, encoder):
+    def __init__(self, base_model : str):
         super(UniXEncoderBase, self).__init__()
-        self.encoder = encoder
-        self.tokenizer = RobertaTokenizer.from_pretrained("microsoft/unixcoder-base")
+        self.encoder = RobertaModel.from_pretrained(base_model)
+        self.tokenizer = RobertaTokenizer.from_pretrained(base_model)
 
     def forward(self, code_inputs=None, nl_inputs=None):
         if code_inputs is not None:
@@ -34,26 +35,32 @@ class UniXEncoderBase(nn.Module):
             ).sum(-1)[:, None]
             return torch.nn.functional.normalize(outputs, p=2, dim=1)
 
+
 class UniXCoderEmbedder(AbstractTransformerEncoder):
-    """ """
+    """ 
+    
+    """
 
-    def __init__(self):
-
+    def __init__(self, base_model : str):
+        super(UniXCoderEmbedder, self).__init__()
         self.config_path = Path(__file__).parent / "config.yaml"
         self.model_args = yaml.safe_load(self.config_path.read_text())
+
+        assert base_model in list(self.model_args['UniXCoder']['allowed_base_models'].keys()), \
+            f"UniXCoder embedding model must be in \
+            {list(self.model_args['UniXCoder']['allowed_base_models'].keys())}, got {base_model}"
+        
         self.tokenizer = RobertaTokenizer.from_pretrained(
-            self.model_args["UniXCoder"]["base_model"]
+            base_model
         )
         self.config = RobertaConfig.from_pretrained(
-            self.model_args["UniXCoder"]["base_model"]
+            base_model
         )
-        self.device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+        self.base_model = base_model
+        self.serving_batch_size = self.model_args['UniXCoder']['serving']['batch_size']
 
-        self.serving_batch_size = 32
-        self.model_languages = ["python", "javascript", "go", "java"]
-        self.model_dict = {}
-        for language in self.model_languages:
-            self.model_dict[language] = self.load_model(model_language=language)
+        self.allowed_languages = self.model_args['UniXCoder']['allowed_base_models'][self.base_model]
+        self.model = self.load_model()
 
     @staticmethod
     def split_list_equal_chunks(list_object, split_length):
@@ -61,7 +68,7 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
         for i in range(0, len(list_object), split_length):
             yield list_object[i : i + split_length]
 
-    def load_model(self, model_language: str):
+    def load_model(self):
         """
         Abstract loader for loading models from disk into embedding models for each language
         Arguments
@@ -74,16 +81,12 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
             an instance of a wrapped roberta model that has been finetuned on the codesearchnet corpus
         """
         start = time.time()
-        model = UniXEncoderBase(
-            encoder=RobertaModel.from_pretrained(
-                "microsoft/unixcoder-base"
-            )
-        )
+        model = UniXEncoderBase(base_model = self.base_model)
         model_to_load = model.module if hasattr(model, "module") else model
 
         print(
-            "Search retrieval model for language set {} loaded correctly to device {} in {} seconds".format(
-                model_language, self.device, time.time() - start
+            "Search retrieval model for allowed_languages {} loaded correctly to device {} in {} seconds".format(
+                self.allowed_languages, self.device, time.time() - start
             )
         )
         return model_to_load.to(self.device)
@@ -162,7 +165,7 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
             logging parameter to display the task for embedding, query or code.
         """
         start = time.time()
-        model = self.model_dict[language]
+        model = self.model
 
         code_token_ids = self.tokenize(
             string_batch, max_length=max_length_tokenizer, mode="<encoder-only>"
@@ -173,7 +176,7 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
         )
         if isinstance(string_batch, str):
             print(
-                f"inference_logged-  batch_size:{1}, language:{language}, request_type:{embedding_type}, inference_time:{time.time()-start:.4f}, average_inference_time:{((time.time()-start)):.4f}"
+                f"inference_logged- batch_size:{1}, language:{language}, request_type:{embedding_type}, inference_time:{time.time()-start:.4f}, average_inference_time:{((time.time()-start)):.4f}"
             )
         elif isinstance(string_batch, list):
             print(
@@ -205,7 +208,7 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
             logging parameter to display the task for embedding, query or code.
         """
         start = time.time()
-        model = self.model_dict[language]
+        model = self.model
         code_embeddings_list = []
 
         # Sort inputs by list
@@ -226,7 +229,7 @@ class UniXCoderEmbedder(AbstractTransformerEncoder):
 
         inference_embeddings = [x for xs in code_embeddings_list for x in xs]
         print(
-            f"inference_logged-  batch_size:{len(string_batch)}, language:{language}, request_type:{embedding_type}, inference_time:{time.time()-start:.4f}, average_inference_time:{((time.time()-start)/len(string_batch)):.4f}"
+            f"inference_logged- batch_size:{len(string_batch)}, language:{language}, request_type:{embedding_type}, inference_time:{time.time()-start:.4f}, average_inference_time:{((time.time()-start)/len(string_batch)):.4f}"
         )
         return inference_embeddings
 

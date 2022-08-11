@@ -18,12 +18,12 @@ class AbstractTransformerEncoder(ABC):
     class for the inheritance definitions for all of the encoders that will be usable as 
     partof the public embeddings API. 
     ''' 
+    allowed_languages : List[str]
+    
     def __init__(self) -> None:
         super().__init__()
-    
-    @property
-    def allowed_languages(self):
-        pass 
+        self.device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+
 
     @abstractmethod
     def load_model(self): 
