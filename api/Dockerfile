@@ -1,6 +1,9 @@
 FROM nvidia/cuda:11.0.3-cudnn8-runtime-ubuntu20.04
 
 
+ENV model =  "foo"
+RUN echo $model
+
 RUN rm /etc/apt/sources.list.d/cuda.list
 RUN apt-key del 7fa2af80
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub
@@ -42,17 +45,10 @@ RUN conda install pytorch cudatoolkit=11.3 -c pytorch \
     && pip install transformers -U \
     && conda clean -ya
 
-# Set some environment variables. PYTHONUNBUFFERED keeps Python from buffering our standard
-# output stream, which means that logs can be delivered to the user quickly. PYTHONDONTWRITEBYTECODE
-# keeps Python from writing the .pyc files which are unnecessary in this case. We also update
-# PATH so that the train and serve programs are found when the container is invoked.
-ENV PYTHONUNBUFFERED=TRUE
-ENV PYTHONDONTWRITEBYTECODE=TRUE
-ENV PATH="/opt/program/:${PATH}"
-# Set up the program in the image
 
 COPY app /opt/program
 WORKDIR /opt/program
 
-RUN sudo chmod +x /opt/program/train
 RUN sudo chmod +x /opt/program/serve
+
+RUN /opt/program/serve

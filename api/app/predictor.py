@@ -8,9 +8,10 @@ import json
 import os
 import time
 from typing import Optional, Union
-
+import os 
 import numpy as np
 import pandas as pd
+
 import uvicorn
 from fastapi import APIRouter, FastAPI, Response
 from schema import ModelSchema
@@ -22,11 +23,12 @@ controller = APIRouter()
 preloaded_models = {}
 
 
+base_model = os.environ['base_model']
 
 @app.on_event("startup")
 def startup_event():
     print("downloading wrapped class for finetuned embedding models-")
-    preloaded_models["code_search_handler"] = UniXCoderEmbedder('microsoft/unixcoder-base')
+    preloaded_models["code_search_handler"] = UniXCoderEmbedder(base_model)
     pass
 
 
